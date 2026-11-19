@@ -25,7 +25,7 @@ jobs:
         with:
           python-version: "3.11"
 
-      # CRITICAL: Install video rendering tools
+      # Install video rendering tools
       - name: Install System Dependencies
         run: |
           sudo apt-get update
@@ -36,18 +36,18 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # NEW: Clean up any leftover files from a previous failed run
+      # Clean up any leftover files from a previous failed run
       - name: Clean old output files
         run: |
           rm -rf output/clips
           rm -rf output/audio
           rm -f output/*.mp4
 
-      # NEW: Run pipeline with Auto-Retry (up to 3 attempts)
+      # Run pipeline with Auto-Retry (increased timeout to 120 minutes)
       - name: Run AI pipeline
         uses: nick-invision/retry@v2
         with:
-          timeout_minutes: 45
+          timeout_minutes: 120  # <--- CHANGED FROM 45 TO 120
           max_attempts: 3
           retry_on: error
           command: python pipeline.py
