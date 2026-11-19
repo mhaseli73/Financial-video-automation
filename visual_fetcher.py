@@ -1,12 +1,13 @@
 import os
 import json
 import re
+import random
 import requests
 from pathlib import Path
 from urllib.parse import quote
 
 # --- SOURCE 1: COVERR ---
-def fetch_coverr_video(query, output_dir):
+def fetch_coverr_video(query, scene_id, output_dir):
     """Scrapes Coverr for a free MP4 video without an API key."""
     search_url = f"https://coverr.co/s?q={quote(query)}"
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
@@ -18,17 +19,19 @@ def fetch_coverr_video(query, output_dir):
 
         # Look for Coverr's direct MP4 CDN links
         pattern = r'https://cdn\.coverr\.co/videos/[a-zA-Z0-9\-]+/[0-9]+p\.mp4'
-        matches = re.findall(pattern, response.text)
+        matches = list(set(re.findall(pattern, response.text))) # Use set to remove duplicates
 
         if not matches:
             print(f"  [Coverr] No videos found.")
             return None
 
-        video_url = sorted(set(matches))[0]
+        # Pick a RANDOM video from the results to avoid repetition
+        video_url = random.choice(matches)
         print(f"  [Coverr] Found video: {video_url}")
 
         safe_query = quote(query, safe="")
-        local_filename = output_dir / f"clip_{safe_query}.mp4"
+        # Add scene_id to the filename so it NEVER overwrites previous clips
+        local_filename = output_dir / f"scene_{scene_id}_clip_{safe_query}.mp4"
 
         video_data = requests.get(video_url, headers=headers, timeout=30)
         video_data.raise_for_status()
@@ -42,7 +45,7 @@ def fetch_coverr_video(query, output_dir):
         return None
 
 # --- SOURCE 2: MIXKIT ---
-def fetch_mixkit_video(query, output_dir):
+def fetch_mixkit_video(query, scene_id, output_dir):
     """Scrapes Mixkit for a free MP4 video without an API key."""
     search_slug = query.lower().replace(" ", "-")
     search_url = f"https://mixkit.co/free-stock-video/{search_slug}/"
@@ -55,17 +58,19 @@ def fetch_mixkit_video(query, output_dir):
 
         # Look for Mixkit's direct MP4 links
         pattern = r'https://assets\.mixkit\.co/videos/[0-9]+/[0-9]+-720\.mp4'
-        matches = re.findall(pattern, response.text)
+        matches = list(set(re.findall(pattern, response.text)))
 
         if not matches:
             print(f"  [Mixkit] No videos found.")
             return None
 
-        video_url = sorted(set(matches))[0]
+        # Pick a RANDOM video from the results to avoid repetition
+        video_url = random.choice(matches)
         print(f"  [Mixkit] Found video: {video_url}")
 
         safe_query = quote(query, safe="")
-        local_filename = output_dir / f"clip_{safe_query}.mp4"
+        # Add scene_id to the filename
+        local_filename = output_dir / f"scene_{scene_id}_clip_{safe_query}.mp4"
 
         video_data = requests.get(video_url, headers=headers, timeout=30)
         video_data.raise_for_status()
@@ -79,16 +84,15 @@ def fetch_mixkit_video(query, output_dir):
         return None
 
 # --- THE FALLBACK MANAGER ---
-def fetch_video_with_fallback(query, output_dir):
+def fetch_video_with_fallback(query, scene_id, output_dir):
     """Tries multiple sources until one successfully downloads a video."""
-    # Add or remove sources from this list to change the priority
     sources = [
         fetch_coverr_video,
         fetch_mixkit_video
     ]
     
     for source_func in sources:
-        path = source_func(query, output_dir)
+        path = source_func(query, scene_id, output_dir)
         if path:
             return path
             
@@ -115,9 +119,10 @@ def main():
 
         for scene in scene_plan.get("scenes", []):
             query = scene.get("pexels_video_query")
+            scene_id = scene.get("scene_id", "unknown")
+            
             if query:
-                # Use the fallback manager instead of a single source
-                path = fetch_video_with_fallback(query, clips_dir)
+                path = fetch_video_with_fallback(query, scene_id, clips_dir)
                 if path:
                     all_video_paths.append(path)
 
