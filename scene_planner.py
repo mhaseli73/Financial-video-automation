@@ -1,4 +1,3 @@
-
 import os
 import json
 import time
@@ -149,11 +148,12 @@ one scene.
 7. Each scene must have a visual description suitable
 for cinematic travel footage.
 
-8. Create specific English Pexels search queries.
-Avoid vague queries such as "beautiful nature".
+8. FOCUS ON TOURISTIC ACTIVITIES: The visual descriptions must feature things tourists actually do (e.g., hiking, sightseeing, local food, cultural tours, beaches). Avoid deep industrial, highly scientific, or overly dark/depressing topics.
 
-9. Prefer realistic footage that can actually be
-found in stock video libraries.
+9. CRITICAL RULE FOR VIDEO QUERIES: The `pexels_video_query` MUST be a simple, broad, 2-3 word search term. 
+DO NOT use specific names, locations, or complex sentences. 
+Good examples: "volcano smoke", "hiking mountain", "city street", "tropical beach", "local market".
+Bad examples: "Kawah Ijen turquoise acid lake", "sulfur miner carrying basket", "woman walking in scrapyard".
 
 10. Specify camera movements such as:
 drone movement, slow pan, aerial reveal,
@@ -186,8 +186,8 @@ RETURN ONLY VALID JSON:
             "duration": {scene_duration},
             "narration": "Exact segment from approved narration",
             "visual_description": "Detailed visual description",
-            "pexels_video_query": "Specific English search query",
-            "pexels_image_query": "Specific English search query",
+            "pexels_video_query": "BROAD 2-3 word search query ONLY",
+            "pexels_image_query": "BROAD 2-3 word search query ONLY",
             "camera_movement": "Camera movement",
             "transition": "Transition to next scene",
             "sound_effect": "Suggested sound effect"
