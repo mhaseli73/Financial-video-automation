@@ -3,7 +3,7 @@ name: Travel Video AI Pipeline
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 9 * * *" # Runs every day at 6:00 AM UTC
+    - cron: "0 9 * * *" # Runs every day at 9:00 AM UTC (12:30 PM Iran Time)
 
 permissions:
   contents: write
