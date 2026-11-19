@@ -74,7 +74,8 @@ def main():
         "date": datetime.now(timezone.utc).isoformat()
     })
 
-    history = history[-100:]
+    # REMOVED: history = history[-100:] 
+    # This line used to delete old history. Now it stays forever!
 
     history_file.write_text(
         json.dumps(history, indent=4, ensure_ascii=False),
