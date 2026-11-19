@@ -15,7 +15,12 @@ def get_client():
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY is missing")
-    return genai.Client(api_key=api_key)
+    
+    # ADDED: Timeout of 60 seconds so it doesn't hang forever
+    return genai.Client(
+        api_key=api_key, 
+        http_options=types.HttpOptions(timeout=60000) 
+    )
 
 def generate_with_retry(client, model, prompt):
     for attempt in range(len(RETRY_DELAYS) + 1):
