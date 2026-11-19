@@ -57,7 +57,7 @@ def upload_video(youtube, file_path, title, description, tags, is_short=False):
     video_id = response['id']
     print(f"✅ Successfully uploaded! Video ID: {video_id}")
 
-    # --- NEW: UPLOAD THE THUMBNAIL ---
+    # --- UPLOAD THE THUMBNAIL ---
     thumbnail_path = Path("output/thumbnail.jpg")
     if thumbnail_path.exists():
         print("Uploading custom thumbnail...")
@@ -89,23 +89,28 @@ def main():
     destination = plans[0]["destination"]
     topic_angle = plans[0]["topic_angle"]
     
-    title = f"{destination}: {topic_angle}"
-    description = f"Explore the beautiful {destination} in this practical travel guide.\n\n{topic_angle}\n\n#travel #{destination.replace(' ', '')} #travelguide"
-    tags = ["travel", destination, "travel guide", "cinematic", "amazing places"]
-
     youtube = get_youtube_client()
 
-    # Upload the long video
+    # --- 1. UPLOAD THE LONG VIDEO ---
     long_video = output_dir / "long_final_video.mp4"
     if long_video.exists():
-        upload_video(youtube, str(long_video), title, description, tags, is_short=False)
+        long_title = f"{destination} Travel Guide: {topic_angle}"
+        long_desc = f"Explore the beautiful {destination} in this practical travel guide.\n\nIn this video, we cover: {topic_angle}\n\n#travel #{destination.replace(' ', '')} #travelguide"
+        long_tags = ["travel guide", destination, "best beaches", "where to stay", "travel tips"]
+        
+        upload_video(youtube, str(long_video), long_title, long_desc, long_tags, is_short=False)
     else:
         print("⚠️ long_final_video.mp4 not found.")
 
-    # Upload the short video
+    # --- 2. UPLOAD THE SHORT VIDEO ---
     short_video = output_dir / "short_final_video.mp4"
     if short_video.exists():
-        upload_video(youtube, str(short_video), title, description, tags, is_short=True)
+        # Make the Short title punchier and more click-baity for the Shorts feed
+        short_title = f"Don't visit {destination} before watching this! 💡"
+        short_desc = f"The ultimate quick guide to {destination}. {topic_angle}\n\n#travel #{destination.replace(' ', '')} #travelshorts"
+        short_tags = ["travel shorts", destination, "travel tips", "vacation", "traveltok"]
+        
+        upload_video(youtube, str(short_video), short_title, short_desc, short_tags, is_short=True)
     else:
         print("⚠️ short_final_video.mp4 not found.")
 
