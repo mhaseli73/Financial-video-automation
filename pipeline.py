@@ -8,7 +8,8 @@ import scene_planner
 import visual_fetcher
 import voiceover_generator
 import video_renderer
-import youtube_uploader # <-- NEW IMPORT
+import thumbnail_generator  # <-- NEW IMPORT
+import youtube_uploader 
 
 def run_step(name, function):
     print(f"\n{'=' * 50}", flush=True)
@@ -33,9 +34,12 @@ def run_pipeline():
     run_step("Visual Acquisition", visual_fetcher.main)
     run_step("Voiceover Generation", voiceover_generator.main)
     run_step("Video Rendering", video_renderer.main)
-    run_step("YouTube Upload", youtube_uploader.main) # <-- NEW STEP
     
-    print("\nPipeline completed successfully! Videos are on YouTube.", flush=True)
+    run_step("Thumbnail Generation", thumbnail_generator.main) # <-- NEW STEP
+    
+    run_step("YouTube Upload", youtube_uploader.main) 
+    
+    print("\nPipeline completed successfully! Videos and thumbnails are on YouTube.", flush=True)
 
 if __name__ == "__main__":
     run_pipeline()
