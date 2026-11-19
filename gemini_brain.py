@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import random
 from pathlib import Path
 
 from google import genai
@@ -37,7 +38,6 @@ def generate_with_retry(client, model, prompt):
                 )
             )
             if not response.text:
-                print("Gemini returned an empty response.")
                 return None
             try:
                 result = json.loads(response.text)
@@ -45,12 +45,10 @@ def generate_with_retry(client, model, prompt):
                 print(f"Invalid JSON from {model}: {error}", flush=True)
                 return None
             if not isinstance(result, dict):
-                print("Gemini response is not a JSON object.")
                 return None
             return result
         except errors.APIError as error:
             status = getattr(error, "code", None)
-            print(f"Gemini API error: {status} - {error}", flush=True)
             if status == 429 and is_daily_quota_error(error):
                 return None
             if status not in TEMPORARY_ERRORS:
@@ -62,6 +60,7 @@ def generate_with_retry(client, model, prompt):
 def choose_destination():
     history_file = Path("output/decision_history.json")
     history = []
+
     if history_file.exists():
         try:
             history = json.loads(history_file.read_text(encoding="utf-8"))
@@ -70,72 +69,79 @@ def choose_destination():
         except (json.JSONDecodeError, OSError):
             history = []
 
+    # --- NEW: HYBRID MEMORY SYSTEM ---
+    # 1. Get the last 30 to avoid immediate repetition
+    recent_30 = history[-30:] if len(history) > 30 else history
+    
+    # 2. Get a random sample of 30 older titles to keep the AI aware of history
+    older_sample = []
+    if len(history) > 30:
+        older_sample = random.sample(history[:-30], min(30, len(history) - 30))
+    
+    # Combine them for the prompt
+    memory_context = recent_30 + older_sample
     recent_destinations = [
         f"{item.get('destination')} ({item.get('topic_angle')})"
-        for item in history[-20:]
+        for item in memory_context
         if isinstance(item, dict)
     ]
 
-    # --- PRACTICAL TRAVEL GUIDE PROMPT ---
+    # 3. Create a set of ALL past titles for the final Python check
+    # (This is the permanent "blacklist")
+    all_past_titles = {
+        f"{item.get('destination')} ({item.get('topic_angle')})".lower() 
+        for item in history if isinstance(item, dict)
+    }
+
     prompt = f"""
 You are the AI director of a popular travel guide YouTube channel called "Amazing Places Around the World".
 
-Your target audience:
-United States, United Kingdom, Europe, and Australia.
+Your target audience: United States, United Kingdom, Europe, and Australia.
 
-Your task:
-Choose ONE tourist destination (a city, a specific beach town, or a region) and create a PRACTICAL TRAVEL GUIDE angle for today's video.
+Choose ONE tourist destination and a PRACTICAL TRAVEL GUIDE angle.
 
 CRITICAL RULES:
-1. FOCUS ON PRACTICAL TOURISM: The video should cover things like the best beaches, quality of hotels, local food to try, how to get there, and what to do.
-2. VISUAL POTENTIAL: The destination must have visuals that can be easily found in generic stock footage libraries (e.g., beautiful beaches, hotel rooms, food, city streets, airplanes). 
-3. AVOID: Mysteries, dark history, extreme survival, and industrial topics.
-
-Example of a good topic_angle: 
-"A Complete Guide to Can Picafort: Beaches, Hotels, and Where to Eat in Mallorca"
-
-Avoid recently selected destinations:
+1. FOCUS ON PRACTICAL TOURISM: Best beaches, quality of hotels, local food, how to get there.
+2. VISUAL POTENTIAL: Use visuals easily found in stock footage (beaches, hotels, food, streets).
+3. GEOGRAPHIC DIVERSITY: Try to pick a country different from the last 3 videos.
+4. Here is a sample of past topics (recent and random older ones). DO NOT REPEAT ANY OF THESE:
 {json.dumps(recent_destinations, ensure_ascii=False)}
 
-Return ONLY valid JSON with these fields:
-
+Return ONLY valid JSON:
 {{
-  "name": "Destination name (e.g., Can Picafort)",
-  "country": "Country (e.g., Spain)",
+  "name": "Destination name",
+  "country": "Country",
   "theme": "Practical Travel Guide",
-  "topic_angle": "Specific guide angle (e.g., Best beaches and local food in [Place])",
-  "audience_reason": "Why viewers will want this practical travel information",
-  "visual_ideas": [
-    "Visual idea 1 (e.g., Mediterranean beach resort)",
-    "Visual idea 2 (e.g., Paella local food)",
-    "Visual idea 3 (e.g., Tourists walking in a coastal town)"
-  ]
+  "topic_angle": "Specific guide angle",
+  "audience_reason": "Why viewers will want this",
+  "visual_ideas": ["Idea 1", "Idea 2", "Idea 3"]
 }}
 """
 
     client = get_client()
     print("Trying primary Gemini model...", flush=True)
     
-    result = generate_with_retry(client, PRIMARY_MODEL, prompt)
+    # We will try up to 3 times to get a completely unique title
+    for attempt in range(3):
+        result = generate_with_retry(client, PRIMARY_MODEL, prompt)
+        if result is None:
+            result = generate_with_retry(client, FALLBACK_MODEL, prompt)
 
-    if result is None:
-        print("Switching to fallback model...", flush=True)
-        result = generate_with_retry(client, FALLBACK_MODEL, prompt)
+        if result is None:
+            raise RuntimeError("Both Gemini models failed.")
 
-    if result is None:
-        raise RuntimeError("Both Gemini models failed.")
+        # --- THE PERMANENT CHECK ---
+        # Check if the generated title exactly matches ANY title in the infinite history
+        generated_title = f"{result['name']} ({result['topic_angle']})".lower()
+        
+        if generated_title not in all_past_titles:
+            print("Destination successfully selected and verified unique!", flush=True)
+            return result
+        else:
+            print(f"⚠️ AI generated a duplicate title ({generated_title}). Forcing retry...")
+            # If it's a duplicate, we loop back and ask Gemini again!
 
-    required = ["name", "country", "theme", "topic_angle", "audience_reason", "visual_ideas"]
-    for field in required:
-        if field not in result:
-            raise ValueError(f"Gemini response missing: {field}")
-    if not all(isinstance(result[field], str) and result[field].strip() for field in required[:5]):
-        raise ValueError("Invalid destination information")
-    if (not isinstance(result["visual_ideas"], list) or not result["visual_ideas"]):
-        raise ValueError("Invalid visual ideas")
-
-    print("Destination successfully selected!", flush=True)
-    return result
+    raise RuntimeError("Failed to generate a unique title after 3 attempts.")
 
 if __name__ == "__main__":
     destination = choose_destination()
