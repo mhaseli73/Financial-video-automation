@@ -17,7 +17,12 @@ def get_client():
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY is missing")
-    return genai.Client(api_key=api_key)
+    
+    # ADDED: Timeout of 60 seconds so it doesn't hang forever
+    return genai.Client(
+        api_key=api_key, 
+        http_options=types.HttpOptions(timeout=60000) 
+    )
 
 def is_daily_quota_error(error):
     message = str(error).lower()
@@ -70,15 +75,12 @@ def choose_destination():
             history = []
 
     # --- NEW: HYBRID MEMORY SYSTEM ---
-    # 1. Get the last 30 to avoid immediate repetition
     recent_30 = history[-30:] if len(history) > 30 else history
     
-    # 2. Get a random sample of 30 older titles to keep the AI aware of history
     older_sample = []
     if len(history) > 30:
         older_sample = random.sample(history[:-30], min(30, len(history) - 30))
     
-    # Combine them for the prompt
     memory_context = recent_30 + older_sample
     recent_destinations = [
         f"{item.get('destination')} ({item.get('topic_angle')})"
@@ -86,8 +88,6 @@ def choose_destination():
         if isinstance(item, dict)
     ]
 
-    # 3. Create a set of ALL past titles for the final Python check
-    # (This is the permanent "blacklist")
     all_past_titles = {
         f"{item.get('destination')} ({item.get('topic_angle')})".lower() 
         for item in history if isinstance(item, dict)
@@ -121,7 +121,6 @@ Return ONLY valid JSON:
     client = get_client()
     print("Trying primary Gemini model...", flush=True)
     
-    # We will try up to 3 times to get a completely unique title
     for attempt in range(3):
         result = generate_with_retry(client, PRIMARY_MODEL, prompt)
         if result is None:
@@ -130,8 +129,6 @@ Return ONLY valid JSON:
         if result is None:
             raise RuntimeError("Both Gemini models failed.")
 
-        # --- THE PERMANENT CHECK ---
-        # Check if the generated title exactly matches ANY title in the infinite history
         generated_title = f"{result['name']} ({result['topic_angle']})".lower()
         
         if generated_title not in all_past_titles:
@@ -139,7 +136,6 @@ Return ONLY valid JSON:
             return result
         else:
             print(f"⚠️ AI generated a duplicate title ({generated_title}). Forcing retry...")
-            # If it's a duplicate, we loop back and ask Gemini again!
 
     raise RuntimeError("Failed to generate a unique title after 3 attempts.")
 
