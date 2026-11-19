@@ -36,12 +36,24 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      # NEW: Clean up any leftover files from a previous failed run
+      - name: Clean old output files
+        run: |
+          rm -rf output/clips
+          rm -rf output/audio
+          rm -f output/*.mp4
+
+      # NEW: Run pipeline with Auto-Retry (up to 3 attempts)
       - name: Run AI pipeline
+        uses: nick-invision/retry@v2
+        with:
+          timeout_minutes: 45
+          max_attempts: 3
+          retry_on: error
+          command: python pipeline.py
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          YT_TOKEN_JSON: ${{ secrets.YT_TOKEN_JSON }} # CRITICAL: Added YouTube Token
-        run: |
-          python pipeline.py
+          YT_TOKEN_JSON: ${{ secrets.YT_TOKEN_JSON }}
 
       - name: Save AI decision history
         run: |
