@@ -33,43 +33,58 @@ def main():
     output_dir = Path("output")
     audio_dir = output_dir / "audio"
     
+    # 1. Load the video plan to get the dynamic destination name
+    plan_file = output_dir / "video_plan.json"
+    destination_name = "Amazing Places" # Fallback text
+    if plan_file.exists():
+        with open(plan_file, encoding="utf-8") as f:
+            plans = json.load(f)
+            destination_name = plans[0].get("destination", "Amazing Places")
+
     with open(output_dir / "video_assets.json", encoding="utf-8") as f:
         video_paths = json.load(f)
 
     audio_files = list(audio_dir.glob("*_narration.mp3"))
 
+    # Define the length of the crossfade (in seconds)
+    crossfade_duration = 1.0
+
     for audio_path in audio_files:
         video_type = audio_path.stem.replace("_narration", "")
-        print(f"\nRendering {video_type} video with cinematic effects...")
+        print(f"\nRendering {video_type} video with crossfades...")
 
         narration = AudioFileClip(str(audio_path))
         target_duration = narration.duration
 
-        # Build visual track with Ken Burns effect
         clips = []
         current_duration = 0.0
+        
         for path in video_paths:
-            if current_duration >= target_duration:
+            # Because of the crossfades, we need to grab a little extra footage
+            if current_duration >= target_duration + (len(clips) * crossfade_duration):
                 break
             
             clip = VideoFileClip(path)
-            remaining_time = target_duration - current_duration
-            
-            if clip.duration > remaining_time:
-                clip = clip.subclip(0, remaining_time)
-            
             clip = apply_ken_burns(clip, zoom_ratio=0.05)
+            
+            # Apply the crossfade to every clip EXCEPT the first one
+            if len(clips) > 0:
+                clip = clip.crossfadein(crossfade_duration)
+                
             clips.append(clip)
             current_duration += clip.duration
 
         if not clips:
             continue
 
-        visual_track = concatenate_videoclips(clips, method="compose")
+        # Overlap the clips by using a negative padding value
+        visual_track = concatenate_videoclips(clips, method="compose", padding=-crossfade_duration)
+        
+        # Ensure the video matches the audio duration exactly
         visual_track = visual_track.set_duration(target_duration)
 
-        # Add Text Overlay
-        title_overlay = create_text_overlay("Discover the Hidden Beauty", duration=5, fontsize=80)
+        # Add Dynamic Text Overlay (Uses the destination name!)
+        title_overlay = create_text_overlay(destination_name, duration=5, fontsize=80)
         visual_track = CompositeVideoClip([visual_track, title_overlay])
 
         # Mix Background Music (if you have output/bgm.mp3)
@@ -79,7 +94,6 @@ def main():
             bgm = bgm.set_duration(target_duration)
             final_audio = CompositeAudioClip([narration, bgm])
         else:
-            print("Note: No output/bgm.mp3 found. Rendering with voiceover only.")
             final_audio = narration
 
         final_video = visual_track.set_audio(final_audio)
