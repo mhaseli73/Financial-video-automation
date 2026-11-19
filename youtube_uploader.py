@@ -23,7 +23,7 @@ def get_youtube_client():
     return build("youtube", "v3", credentials=creds)
 
 def upload_video(youtube, file_path, title, description, tags, is_short=False):
-    """Uploads a video to YouTube."""
+    """Uploads a video to YouTube and sets the custom thumbnail."""
     print(f"Uploading {file_path} to YouTube...")
     
     body = {
@@ -54,8 +54,25 @@ def upload_video(youtube, file_path, title, description, tags, is_short=False):
         if status:
             print(f"Upload progress: {int(status.progress() * 100)}%")
 
-    print(f"✅ Successfully uploaded! Video ID: {response['id']}")
-    return response['id']
+    video_id = response['id']
+    print(f"✅ Successfully uploaded! Video ID: {video_id}")
+
+    # --- NEW: UPLOAD THE THUMBNAIL ---
+    thumbnail_path = Path("output/thumbnail.jpg")
+    if thumbnail_path.exists():
+        print("Uploading custom thumbnail...")
+        try:
+            youtube.thumbnails().set(
+                videoId=video_id,
+                media_body=MediaFileUpload(str(thumbnail_path))
+            ).execute()
+            print("✅ Thumbnail set successfully!")
+        except Exception as e:
+            print(f"⚠️ Failed to upload thumbnail: {e}")
+    else:
+        print("⚠️ No thumbnail.jpg found to upload.")
+    
+    return video_id
 
 def main():
     output_dir = Path("output")
@@ -73,8 +90,8 @@ def main():
     topic_angle = plans[0]["topic_angle"]
     
     title = f"{destination}: {topic_angle}"
-    description = f"Explore the beautiful {destination} in this cinematic travel documentary.\n\n{topic_angle}\n\n#travel #{destination.replace(' ', '')} #documentary"
-    tags = ["travel", destination, "nature documentary", "cinematic", "amazing places"]
+    description = f"Explore the beautiful {destination} in this practical travel guide.\n\n{topic_angle}\n\n#travel #{destination.replace(' ', '')} #travelguide"
+    tags = ["travel", destination, "travel guide", "cinematic", "amazing places"]
 
     youtube = get_youtube_client()
 
