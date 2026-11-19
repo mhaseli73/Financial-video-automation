@@ -2,18 +2,24 @@ import json
 from pathlib import Path
 from moviepy.editor import (
     VideoFileClip, AudioFileClip, CompositeAudioClip,
-    TextClip, CompositeVideoClip, concatenate_videoclips, vfx
+    TextClip, CompositeVideoClip, concatenate_videoclips
 )
 
-def apply_ken_burns(clip, zoom_ratio=0.1):
-    """Applies a slow zoom to a video clip to make it look alive."""
-    def effect(get_frame, t):
-        frame = get_frame(t)
-        h, w = frame.shape[:2]
-        new_w, new_h = int(w * (1 + zoom_ratio * t)), int(h * (1 + zoom_ratio * t))
-        resized = vfx.resize(frame, newsize=(new_w, new_h))
-        return resized[(new_h-h)//2:(new_h-h)//2 + h, (new_w-w)//2:(new_w-w)//2 + w]
-    return clip.fl(effect)
+def apply_ken_burns(clip, zoom_ratio=0.05):
+    """Applies a slow zoom to a video clip using MoviePy's native tools."""
+    # Get the original size
+    w, h = clip.size
+    
+    # Resize the clip over time to create a zoom effect
+    resized_clip = clip.resize(lambda t: 1 + zoom_ratio * t)
+    
+    # Crop back to the original size, centered, so the frame stays the same size
+    return resized_clip.crop(
+        x_center=resized_clip.w / 2,
+        y_center=resized_clip.h / 2,
+        width=w,
+        height=h
+    )
 
 def create_text_overlay(text, duration, fontsize=60):
     """Creates text on the screen with a dark background."""
@@ -33,9 +39,8 @@ def main():
     output_dir = Path("output")
     audio_dir = output_dir / "audio"
     
-    # 1. Load the video plan to get the dynamic destination name
     plan_file = output_dir / "video_plan.json"
-    destination_name = "Amazing Places" # Fallback text
+    destination_name = "Amazing Places" 
     if plan_file.exists():
         with open(plan_file, encoding="utf-8") as f:
             plans = json.load(f)
@@ -45,8 +50,6 @@ def main():
         video_paths = json.load(f)
 
     audio_files = list(audio_dir.glob("*_narration.mp3"))
-
-    # Define the length of the crossfade (in seconds)
     crossfade_duration = 1.0
 
     for audio_path in audio_files:
@@ -60,14 +63,12 @@ def main():
         current_duration = 0.0
         
         for path in video_paths:
-            # Because of the crossfades, we need to grab a little extra footage
             if current_duration >= target_duration + (len(clips) * crossfade_duration):
                 break
             
             clip = VideoFileClip(path)
             clip = apply_ken_burns(clip, zoom_ratio=0.05)
             
-            # Apply the crossfade to every clip EXCEPT the first one
             if len(clips) > 0:
                 clip = clip.crossfadein(crossfade_duration)
                 
@@ -77,20 +78,15 @@ def main():
         if not clips:
             continue
 
-        # Overlap the clips by using a negative padding value
         visual_track = concatenate_videoclips(clips, method="compose", padding=-crossfade_duration)
-        
-        # Ensure the video matches the audio duration exactly
         visual_track = visual_track.set_duration(target_duration)
 
-        # Add Dynamic Text Overlay (Uses the destination name!)
         title_overlay = create_text_overlay(destination_name, duration=5, fontsize=80)
         visual_track = CompositeVideoClip([visual_track, title_overlay])
 
-        # Mix Background Music (if you have output/bgm.mp3)
         bgm_path = output_dir / "bgm.mp3"
         if bgm_path.exists():
-            bgm = AudioFileClip(str(bgm_path)).volumex(0.1) # 10% volume
+            bgm = AudioFileClip(str(bgm_path)).volumex(0.1) 
             bgm = bgm.set_duration(target_duration)
             final_audio = CompositeAudioClip([narration, bgm])
         else:
@@ -98,7 +94,6 @@ def main():
 
         final_video = visual_track.set_audio(final_audio)
 
-        # Export
         output_video_path = output_dir / f"{video_type}_final_video.mp4"
         print(f"Exporting to {output_video_path}...")
         final_video.write_videofile(
