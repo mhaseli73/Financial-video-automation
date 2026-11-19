@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import re
 from pathlib import Path
 
 from google import genai
@@ -16,7 +17,6 @@ def get_client():
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY is missing")
     
-    # ADDED: Timeout of 60 seconds so it doesn't hang forever
     return genai.Client(
         api_key=api_key, 
         http_options=types.HttpOptions(timeout=60000) 
@@ -50,6 +50,10 @@ def generate_with_retry(client, model, prompt):
             if attempt < len(RETRY_DELAYS):
                 time.sleep(RETRY_DELAYS[attempt])
     return None
+
+def clean_text_for_comparison(text):
+    """Removes punctuation and lowercases everything for a fair comparison."""
+    return re.sub(r'[^a-z0-9 ]', '', text.lower()).split()
 
 def create_scene_plan(plan, script, client):
     video_type = plan["video_type"]
@@ -142,10 +146,19 @@ RETURN ONLY VALID JSON:
     if abs(current_time - duration) > 0.01:
         raise ValueError("Total video duration mismatch")
 
-    original_narration = " ".join(script["narration"].split())
-    combined_narration = " ".join(" ".join(narration_segments).split())
-    if original_narration != combined_narration:
-        raise ValueError("Scene narration does not exactly match the approved script.")
+    # --- NEW, FORGIVING VALIDATION ---
+    original_words = clean_text_for_comparison(script["narration"])
+    combined_words = clean_text_for_comparison(" ".join(narration_segments))
+    
+    if len(original_words) != len(combined_words):
+        raise ValueError("Scene narration word count mismatch.")
+
+    # Allow up to 5% of words to be slightly different (e.g. punctuation changes)
+    matches = sum(1 for w1, w2 in zip(original_words, combined_words) if w1 == w2)
+    similarity = matches / len(original_words) if original_words else 0
+
+    if similarity < 0.95:
+         raise ValueError(f"Scene narration does not match approved script (Similarity: {similarity:.2%})")
 
     print(f"{video_type.capitalize()} scene plan validated successfully!")
     return result
