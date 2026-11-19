@@ -29,6 +29,10 @@ def main():
     if not scene_plan_files:
         raise FileNotFoundError("No scene plan files found in output/scene_plans/")
 
+    # Pick a random voice ONCE per run so Short and Long match!
+    chosen_voice = random.choice(VOICES)
+    print(f"🎙️ Selected Voice for today's videos: {chosen_voice}")
+
     for plan_file in scene_plan_files:
         print(f"Generating voiceover for: {plan_file.name}")
         
@@ -38,7 +42,6 @@ def main():
         # Combine all narration text from every scene
         full_narration = ""
         for scene in scene_plan.get("scenes", []):
-            # Safely check for the narration key your script generator uses
             text = scene.get("narration") or scene.get("script") or scene.get("text") or ""
             if text:
                 full_narration += text + " "
@@ -47,17 +50,13 @@ def main():
             print(f"Warning: No text found in {plan_file.name}. Skipping.")
             continue
 
-        # Pick a random voice for this specific video
-        chosen_voice = random.choice(VOICES)
-        print(f"Selected Voice: {chosen_voice}")
-
         # Create a clean output filename (e.g., short_narration.mp3)
         video_type = plan_file.stem.replace("_scene_plan", "")
         output_audio_path = audio_dir / f"{video_type}_narration.mp3"
 
         print(f"Generating audio -> {output_audio_path}")
         
-        # Run the async TTS function and pass the chosen voice
+        # Run the async TTS function
         asyncio.run(generate_audio(full_narration.strip(), str(output_audio_path), chosen_voice))
         
         print(f"Successfully created {output_audio_path}")
