@@ -25,11 +25,12 @@ jobs:
         with:
           python-version: "3.11"
 
-      # Install video rendering tools
+      # Install video rendering tools AND fonts for text overlays
       - name: Install System Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg imagemagick
+          sudo apt-get install -y ttf-mscorefonts-installer || true
 
       - name: Install dependencies
         run: |
@@ -47,7 +48,7 @@ jobs:
       - name: Run AI pipeline
         uses: nick-invision/retry@v2
         with:
-          timeout_minutes: 120  # <--- CHANGED FROM 45 TO 120
+          timeout_minutes: 120
           max_attempts: 3
           retry_on: error
           command: python pipeline.py
