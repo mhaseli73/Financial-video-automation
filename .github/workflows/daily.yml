@@ -31,6 +31,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg imagemagick
           sudo apt-get install -y ttf-mscorefonts-installer || true
+          
+          # FIX IMAGEMAGICK SECURITY POLICY FOR TEXTCLIP
+          sudo sed -i 's/rights="none" pattern="@\*"/rights="read|write" pattern="@\*"/' /etc/ImageMagick-6/policy.xml || true
+          sudo sed -i 's/rights="none" pattern="LABEL"/rights="read|write" pattern="LABEL"/' /etc/ImageMagick-6/policy.xml || true
 
       - name: Install dependencies
         run: |
