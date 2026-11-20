@@ -123,30 +123,25 @@ RETURN ONLY VALID JSON:
     if not isinstance(scenes, list) or len(scenes) != scene_count:
         raise ValueError(f"Expected {scene_count} scenes, received {len(scenes) if scenes else 0}")
 
-    required_fields = ["scene_id", "start_time", "duration", "narration", "visual_description", "pexels_video_query", "pexels_image_query", "camera_movement", "transition", "sound_effect"]
+    required_fields = ["narration", "visual_description", "pexels_video_query", "pexels_image_query", "camera_movement", "transition", "sound_effect"]
     current_time = 0
     narration_segments = []
 
     for index, scene in enumerate(scenes):
+        # Only check if the required text fields exist
         for field in required_fields:
-            if field not in scene:
-                raise ValueError(f"Scene {index + 1} missing {field}")
-        if scene["scene_id"] != index + 1:
-            raise ValueError("Invalid scene numbering")
-        if abs(float(scene["start_time"]) - current_time) > 0.01:
-            raise ValueError("Invalid scene timeline")
-        if abs(float(scene["duration"]) - scene_duration) > 0.01:
-            raise ValueError("Invalid scene duration")
-        for field in required_fields[3:]:
-            if not isinstance(scene[field], str) or not scene[field].strip():
-                raise ValueError(f"Scene {index + 1}: invalid {field}")
+            if field not in scene or not isinstance(scene[field], str) or not scene[field].strip():
+                raise ValueError(f"Scene {index + 1} missing or invalid field: {field}")
+        
+        # --- NEW: FORCE CORRECT NUMBERS (Ignore what the AI wrote) ---
+        scene["scene_id"] = index + 1
+        scene["start_time"] = current_time
+        scene["duration"] = scene_duration
+        
         narration_segments.append(scene["narration"])
         current_time += scene_duration
 
-    if abs(current_time - duration) > 0.01:
-        raise ValueError("Total video duration mismatch")
-
-    # --- HERE IS THE FIX: WE PRINT WARNINGS INSTEAD OF CRASHING ---
+    # --- VERY FORGIVING VALIDATION (NO MORE CRASHING) ---
     original_words = clean_text_for_comparison(script["narration"])
     combined_words = clean_text_for_comparison(" ".join(narration_segments))
     
