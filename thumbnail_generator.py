@@ -48,7 +48,8 @@ def generate_thumbnail(destination_name, video_paths, output_path):
     img.save(output_path, "JPEG")
     print(f"Thumbnail saved to {output_path}")
 
-if __name__ == "__main__":
+# --- THIS IS THE NEW MAIN FUNCTION ---
+def main():
     output_dir = Path("output")
     
     # Load destination name
@@ -64,3 +65,6 @@ if __name__ == "__main__":
             video_paths = json.load(f)
 
     generate_thumbnail(dest, video_paths, output_dir / "thumbnail.jpg")
+
+if __name__ == "__main__":
+    main()
