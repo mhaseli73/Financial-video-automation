@@ -5,39 +5,36 @@ from moviepy.editor import (
     TextClip, CompositeVideoClip, concatenate_videoclips
 )
 
-def create_ken_burns_clip(image_path, duration, is_vertical=False):
-    """Creates a video clip from an image with a slow zoom effect."""
-    clip = ImageClip(image_path).set_duration(duration)
-    
-    # Target dimensions
-    target_w, target_h = (1080, 1920) if is_vertical else (1920, 1080)
-    
-    # Resize image to cover the screen
-    clip = clip.resize(height=target_h) if not is_vertical else clip.resize(width=target_w)
-    
-    # Center crop
-    clip = clip.crop(x_center=clip.w/2, y_center=clip.h/2, width=target_w, height=target_h)
-    
-    # Apply Ken Burns Zoom
-    clip = clip.resize(lambda t: 1 + 0.05 * t)
-    
-    # Re-crop to prevent zoom from exceeding bounds
-    clip = clip.crop(x_center=clip.w/2, y_center=clip.h/2, width=target_w, height=target_h)
-    
+def fit_image_to_frame(clip, target_w, target_h):
+    img_w, img_h = clip.size
+    scale_w = target_w / img_w
+    scale_h = target_h / img_h
+    scale = max(scale_w, scale_h)
+    clip = clip.resize(scale)
+    clip = clip.crop(x_center=clip.w / 2, y_center=clip.h / 2, width=target_w, height=target_h)
     return clip
+
+def create_ken_burns_clip(image_path, duration, is_vertical=False):
+    clip = ImageClip(image_path).set_duration(duration)
+    target_w, target_h = (1080, 1920) if is_vertical else (1920, 1080)
+    clip = fit_image_to_frame(clip, target_w, target_h)
+    
+    zoomed_clip = clip.resize(lambda t: 1 + 0.05 * t)
+    zoomed_clip = zoomed_clip.crop(x_center=zoomed_clip.w/2, y_center=zoomed_clip.h/2, width=target_w, height=target_h)
+    return zoomed_clip
 
 def main():
     output_dir = Path("output")
     audio_dir = output_dir / "audio"
     
     plan_file = output_dir / "video_plan.json"
-    destination_name = "Amazing Places" 
+    topic_name = "Money Explained" 
     if plan_file.exists():
         with open(plan_file, encoding="utf-8") as f:
             plans = json.load(f)
-            destination_name = plans[0].get("destination", "Amazing Places")
+            topic_name = plans[0].get("destination", "Money Explained")
 
-    with open(output_dir / "image_assets.json", encoding="utf-8") as f:
+    with open(output_dir / "video_assets.json", encoding="utf-8") as f:
         image_paths = json.load(f)
 
     audio_files = list(audio_dir.glob("*_narration.mp3"))
@@ -52,35 +49,28 @@ def main():
 
         clips = []
         current_duration = 0.0
-        clip_duration = 5.0 # Each image shows for 5 seconds
+        clip_duration = 5.0 
         
         for path in image_paths:
             if current_duration >= target_duration:
                 break
-            
-            # Make sure we don't exceed audio duration
             remaining = target_duration - current_duration
             duration = min(clip_duration, remaining)
-            
             clip = create_ken_burns_clip(path, duration, is_vertical)
             clips.append(clip)
             current_duration += duration
 
-        if not clips:
-            continue
+        if not clips: continue
 
         visual_track = concatenate_videoclips(clips, method="compose")
         visual_track = visual_track.set_duration(target_duration)
 
-        # Add Text Overlay
         try:
-            txt_clip = TextClip(destination_name.upper(), fontsize=90, color='white', font='Arial-Bold', stroke_color='black', stroke_width=4)
+            txt_clip = TextClip(topic_name.upper(), fontsize=90, color='white', font='Arial-Bold', stroke_color='black', stroke_width=4)
             txt_clip = txt_clip.set_position('center').set_duration(4).crossfadeout(1)
             visual_track = CompositeVideoClip([visual_track, txt_clip])
-        except:
-            pass # Skip text if font fails
+        except: pass 
 
-        # Mix Background Music
         bgm_path = output_dir / "bgm.mp3"
         if bgm_path.exists():
             bgm = AudioFileClip(str(bgm_path)).volumex(0.1) 
@@ -90,14 +80,10 @@ def main():
             final_audio = narration
 
         final_video = visual_track.set_audio(final_audio)
-
         output_video_path = output_dir / f"{video_type}_final_video.mp4"
         print(f"Exporting to {output_video_path}...")
         
-        # Vertical for Shorts, Horizontal for Long
-        final_video.write_videofile(
-            str(output_video_path), fps=24, codec="libx264", audio_codec="aac", threads=4, logger="bar"
-        )
+        final_video.write_videofile(str(output_video_path), fps=24, codec="libx264", audio_codec="aac", threads=4, logger="bar")
         
         final_video.close()
         for c in clips: c.close()
