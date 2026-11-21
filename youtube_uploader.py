@@ -8,45 +8,37 @@ from googleapiclient.http import MediaFileUpload
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 
 def get_youtube_client():
-    """Authenticates with YouTube using credentials from GitHub Secrets."""
     token_json_str = os.getenv("YT_TOKEN_JSON")
-    
     if not token_json_str:
-        # Fallback for local testing if you download the token.json file
         if Path("token.json").exists():
             return build("youtube", "v3", credentials=Credentials.from_authorized_user_file("token.json", SCOPES))
         raise RuntimeError("YT_TOKEN_JSON environment variable is missing.")
 
-    # Load credentials from the GitHub Secret string
     creds_info = json.loads(token_json_str)
     creds = Credentials.from_authorized_user_info(creds_info, SCOPES)
     return build("youtube", "v3", credentials=creds)
 
 def upload_video(youtube, file_path, title, description, tags, is_short=False):
-    """Uploads a video to YouTube and sets the custom thumbnail."""
     print(f"Uploading {file_path} to YouTube...")
     
     body = {
         "snippet": {
-            "title": title[:100], # YouTube title limit is 100 chars
-            "description": description[:5000], # YouTube description limit is 5000 chars
+            "title": title[:100],
+            "description": description[:5000],
             "tags": tags,
-            "categoryId": "19" # 19 = Travel & Events
+            "categoryId": "27" # 27 = Education
         },
         "status": {
-            "privacyStatus": "public",
+            "privacyStatus": "private", # CHANGED TO PRIVATE FOR REVIEW
             "selfDeclaredMadeForKids": False
         }
     }
 
-    # If it's a Short, add #Shorts to the title
     if is_short and "#Shorts" not in body["snippet"]["title"]:
         body["snippet"]["title"] += " #Shorts"
 
     media = MediaFileUpload(file_path, chunksize=-1, resumable=True)
-    request = youtube.videos().insert(
-        part="snippet,status", body=body, media_body=media
-    )
+    request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
 
     response = None
     while response is None:
@@ -57,27 +49,19 @@ def upload_video(youtube, file_path, title, description, tags, is_short=False):
     video_id = response['id']
     print(f"✅ Successfully uploaded! Video ID: {video_id}")
 
-    # --- UPLOAD THE THUMBNAIL ---
     thumbnail_path = Path("output/thumbnail.jpg")
     if thumbnail_path.exists():
         print("Uploading custom thumbnail...")
         try:
-            youtube.thumbnails().set(
-                videoId=video_id,
-                media_body=MediaFileUpload(str(thumbnail_path))
-            ).execute()
+            youtube.thumbnails().set(videoId=video_id, media_body=MediaFileUpload(str(thumbnail_path))).execute()
             print("✅ Thumbnail set successfully!")
         except Exception as e:
             print(f"⚠️ Failed to upload thumbnail: {e}")
-    else:
-        print("⚠️ No thumbnail.jpg found to upload.")
     
     return video_id
 
 def main():
     output_dir = Path("output")
-    
-    # Load the video plan to get the title and details
     plan_file = output_dir / "video_plan.json"
     if not plan_file.exists():
         raise FileNotFoundError("video_plan.json not found.")
@@ -85,34 +69,28 @@ def main():
     with open(plan_file, encoding="utf-8") as f:
         plans = json.load(f)
         
-    # Extract metadata from the first plan
-    destination = plans[0]["destination"]
-    topic_angle = plans[0]["topic_angle"]
+    topic = plans[0]["destination"]
+    angle = plans[0]["topic_angle"]
     
     youtube = get_youtube_client()
 
-    # --- 1. UPLOAD THE LONG VIDEO ---
+    # --- LONG VIDEO ---
     long_video = output_dir / "long_final_video.mp4"
     if long_video.exists():
-        long_title = f"{destination} Travel Guide: {topic_angle}"
-        long_desc = f"Explore the beautiful {destination} in this practical travel guide.\n\nIn this video, we cover: {topic_angle}\n\n#travel #{destination.replace(' ', '')} #travelguide"
-        long_tags = ["travel guide", destination, "best beaches", "where to stay", "travel tips"]
+        long_title = f"{topic} Explained"
+        long_desc = f"In this video, we explore {angle}.\n\nDisclaimer: This video is for educational purposes only and does not constitute financial advice.\n\n#explained #finance #psychology"
+        long_tags = ["finance", "explained", "psychology", "money", "investing"]
         
         upload_video(youtube, str(long_video), long_title, long_desc, long_tags, is_short=False)
-    else:
-        print("⚠️ long_final_video.mp4 not found.")
 
-    # --- 2. UPLOAD THE SHORT VIDEO ---
+    # --- SHORT VIDEO ---
     short_video = output_dir / "short_final_video.mp4"
     if short_video.exists():
-        # Make the Short title punchier and more click-baity for the Shorts feed
-        short_title = f"Don't visit {destination} before watching this! 💡"
-        short_desc = f"The ultimate quick guide to {destination}. {topic_angle}\n\n#travel #{destination.replace(' ', '')} #travelshorts"
-        short_tags = ["travel shorts", destination, "travel tips", "vacation", "traveltok"]
+        short_title = f"Don't make this money mistake! 💸"
+        short_desc = f"A quick lesson on {topic}. {angle}\n\n#shorts #finance #money"
+        short_tags = ["shorts", "finance", "money", "tips"]
         
         upload_video(youtube, str(short_video), short_title, short_desc, short_tags, is_short=True)
-    else:
-        print("⚠️ short_final_video.mp4 not found.")
 
 if __name__ == "__main__":
     main()
