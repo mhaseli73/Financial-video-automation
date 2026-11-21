@@ -1,44 +1,32 @@
 import os
 import json
-import re
-import random
+import time
 import requests
 from pathlib import Path
 from urllib.parse import quote
 
-def fetch_bing_image(query, scene_id, output_dir):
-    print(f"  [Bing] Searching for image: {query}")
-    search_url = f"https://www.bing.com/images/search?q={quote(query)}"
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+def fetch_ai_image(prompt, scene_id, is_vertical, output_dir):
+    print(f"  [AI Generator] Generating image for: {prompt}")
+    
+    width, height = (1080, 1920) if is_vertical else (1920, 1080)
+    
+    full_prompt = f"{prompt}, stickman style, thick black marker, simple white background, minimalist"
+    
+    image_url = f"https://image.pollinations.ai/prompt/{quote(full_prompt)}?width={width}&height={height}&nologo=true"
     
     try:
-        response = requests.get(search_url, headers=headers, timeout=15)
-        # Extract image URLs from Bing HTML
-        pattern = r'murl&quot;:&quot;(https?://[^&]+?)&quot;'
-        matches = re.findall(pattern, response.text)
+        response = requests.get(image_url, timeout=60)
+        response.raise_for_status()
         
-        if not matches:
-            print(f"  [Bing] No images found.")
-            return None
-            
-        # Pick a random image from the top 10 results
-        image_url = random.choice(matches[:10])
-        
-        # Create unique filename
-        safe_query = quote(query.replace(" ", "_"), safe="")
-        local_filename = output_dir / f"scene_{scene_id}_{safe_query}.jpg"
-        
-        img_data = requests.get(image_url, headers=headers, timeout=30)
-        img_data.raise_for_status()
-        
+        local_filename = output_dir / f"scene_{scene_id}.jpg"
         with open(local_filename, "wb") as f:
-            f.write(img_data.content)
+            f.write(response.content)
             
-        print(f"  [Bing] Downloaded image: {local_filename.name}")
+        print(f"  [AI Generator] Saved: {local_filename.name}")
         return str(local_filename)
         
     except Exception as error:
-        print(f"  [Bing] Error: {error}")
+        print(f"  [AI Generator] Error: {error}")
         return None
 
 def main():
@@ -48,26 +36,28 @@ def main():
     images_dir.mkdir(parents=True, exist_ok=True)
 
     scene_plan_files = list(scene_plans_dir.glob("*_scene_plan.json"))
-    
     all_image_paths = []
 
     for plan_file in scene_plan_files:
         print(f"\nProcessing scene plan: {plan_file.name}")
+        is_vertical = "short" in plan_file.name
+        
         with open(plan_file, encoding="utf-8") as f:
             scene_plan = json.load(f)
 
         for scene in scene_plan.get("scenes", []):
-            # Use a new key specifically for photos to avoid old video queries
-            query = scene.get("visual_description", "")[:50] # Use first 50 chars of visual description
-            # If you prefer the AI's query, use scene.get("pexels_video_query") 
-            
+            prompt = scene.get("visual_description", "")
             scene_id = scene.get("scene_id", 1)
-            if query:
-                path = fetch_bing_image(query, scene_id, images_dir)
+            
+            if prompt:
+                path = fetch_ai_image(prompt, scene_id, is_vertical, images_dir)
                 if path:
                     all_image_paths.append(path)
+                
+                print("  [Waiting 45 seconds to respect free tier rate limits...]")
+                time.sleep(45)
 
-    with open(output_dir / "image_assets.json", "w", encoding="utf-8") as f:
+    with open(output_dir / "video_assets.json", "w", encoding="utf-8") as f:
         json.dump(all_image_paths, f, indent=4)
 
     print(f"\nDownloaded {len(all_image_paths)} images total.")
