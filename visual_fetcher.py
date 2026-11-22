@@ -10,21 +10,17 @@ def fetch_ai_image(prompt, scene_id, is_vertical, output_dir):
     
     width, height = (1080, 1920) if is_vertical else (1920, 1080)
     
-    full_prompt = f"{prompt}, stickman style, thick black marker, simple white background, minimalist"
-    
-    image_url = f"https://image.pollinations.ai/prompt/{quote(full_prompt)}?width={width}&height={height}&nologo=true"
+    # Force Stickman style and use the 'flux' model
+    full_prompt = f"Stickman drawing, thick black marker, white background, minimalist cartoon of: {prompt}"
+    image_url = f"https://image.pollinations.ai/prompt/{quote(full_prompt)}?width={width}&height={height}&nologo=true&model=flux"
     
     try:
         response = requests.get(image_url, timeout=60)
         response.raise_for_status()
-        
-        local_filename = output_dir / f"scene_{scene_id}.jpg"
+        local_filename = output_dir / f"{'short' if is_vertical else 'long'}_scene_{scene_id}.jpg"
         with open(local_filename, "wb") as f:
             f.write(response.content)
-            
-        print(f"  [AI Generator] Saved: {local_filename.name}")
         return str(local_filename)
-        
     except Exception as error:
         print(f"  [AI Generator] Error: {error}")
         return None
@@ -39,7 +35,7 @@ def main():
     all_image_paths = []
 
     for plan_file in scene_plan_files:
-        print(f"\nProcessing scene plan: {plan_file.name}")
+        print(f"\nProcessing: {plan_file.name}")
         is_vertical = "short" in plan_file.name
         
         with open(plan_file, encoding="utf-8") as f:
@@ -51,16 +47,13 @@ def main():
             
             if prompt:
                 path = fetch_ai_image(prompt, scene_id, is_vertical, images_dir)
-                if path:
-                    all_image_paths.append(path)
+                if path: all_image_paths.append(path)
                 
-                print("  [Waiting 45 seconds to respect free tier rate limits...]")
+                print("  [Waiting 45 seconds...]")
                 time.sleep(45)
 
     with open(output_dir / "video_assets.json", "w", encoding="utf-8") as f:
         json.dump(all_image_paths, f, indent=4)
-
-    print(f"\nDownloaded {len(all_image_paths)} images total.")
 
 if __name__ == "__main__":
     main()
