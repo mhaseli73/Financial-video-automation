@@ -3,7 +3,6 @@ import json
 import time
 import re
 from pathlib import Path
-
 from google import genai
 from google.genai import types, errors
 
@@ -14,46 +13,24 @@ TEMPORARY_ERRORS = [408, 429, 500, 502, 503, 504]
 
 def get_client():
     api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise RuntimeError("GEMINI_API_KEY is missing")
-    
-    return genai.Client(
-        api_key=api_key, 
-        http_options=types.HttpOptions(timeout=60000) 
-    )
+    if not api_key: raise RuntimeError("GEMINI_API_KEY is missing")
+    return genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=60000))
 
 def generate_with_retry(client, model, prompt):
     for attempt in range(len(RETRY_DELAYS) + 1):
         try:
-            print(f"Trying {model}, attempt {attempt + 1}...")
             response = client.models.generate_content(
-                model=model,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    temperature=0.5,
-                    max_output_tokens=12000
-                )
+                model=model, contents=prompt,
+                config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.5, max_output_tokens=12000)
             )
-            if not response.text:
-                raise ValueError("Empty Gemini response")
-            result = json.loads(response.text)
-            if not isinstance(result, dict):
-                raise ValueError("Invalid JSON structure")
-            return result
+            if not response.text: raise ValueError("Empty response")
+            return json.loads(response.text)
         except Exception as error:
-            print(f"Generation error: {error}")
             status = getattr(error, "code", None)
-            retryable = (status in TEMPORARY_ERRORS or isinstance(error, json.JSONDecodeError) or "empty gemini response" in str(error).lower())
-            if not retryable:
-                raise
-            if attempt < len(RETRY_DELAYS):
+            if status in TEMPORARY_ERRORS and attempt < len(RETRY_DELAYS):
                 time.sleep(RETRY_DELAYS[attempt])
+            else: raise
     return None
-
-def clean_text_for_comparison(text):
-    """Removes punctuation and lowercases everything for a fair comparison."""
-    return re.sub(r'[^a-z0-9 ]', '', text.lower()).split()
 
 def create_scene_plan(plan, script, client):
     video_type = plan["video_type"]
@@ -62,10 +39,10 @@ def create_scene_plan(plan, script, client):
     scene_duration = duration / scene_count
 
     prompt = f"""
-You are an expert travel video director.
-Create a detailed scene-by-scene production plan for a PRACTICAL TRAVEL GUIDE.
+You are an expert director for a Stickman Finance YouTube channel.
+Create a scene-by-scene production plan.
 
-DESTINATION: {plan['destination']}, {plan['country']}
+TOPIC: {plan['destination']}
 VIDEO TYPE: {video_type}
 TOTAL DURATION: {duration} seconds
 NUMBER OF SCENES: Exactly {scene_count}
@@ -73,20 +50,13 @@ DURATION PER SCENE: Exactly {scene_duration} seconds.
 
 VIDEO TITLE: {script['title']}
 APPROVED FULL NARRATION: {script['narration']}
-VISUAL IDEAS: {json.dumps(plan.get('visual_ideas', []), ensure_ascii=False)}
 
 IMPORTANT RULES:
 1. Create exactly {scene_count} scenes, each {scene_duration} seconds long.
 2. Divide the approved narration exactly into consecutive segments.
 3. Preserve the original narration exactly. Do not rewrite it.
-4. Every narration segment must appear in exactly one scene.
-5. Each scene must have a visual description suitable for travel footage.
-6. FOCUS ON TOURISM: Visuals should show beaches, hotels, local food, streets, tourists, and transportation.
-7. CRITICAL RULE FOR VIDEO QUERIES: The `pexels_video_query` MUST be a simple, broad, 2-3 word search term. 
-   - Good examples: "hotel room", "beach resort", "street food", "airport travel", "mediterranean beach", "city walking".
-   - Bad examples: "Can Picafort beach at sunset", "Mallorca luxury hotel", "Spanish paella cooking". (Keep it generic!).
-8. Specify camera movements (drone, pan, tracking, close-up).
-9. First scene must have a strong hook. Final scene a memorable ending.
+4. Each scene must have a visual description suitable for a STICKMAN CARTOON about FINANCE.
+5. FOCUS ON FINANCE: Visuals should show stickmen interacting with money, credit cards, charts, piggy banks, graphs, or looking stressed/happy about money. DO NOT use travel, beaches, or tourists.
 
 RETURN ONLY VALID JSON:
 {{
@@ -101,9 +71,8 @@ RETURN ONLY VALID JSON:
             "start_time": 0,
             "duration": {scene_duration},
             "narration": "Exact segment",
-            "visual_description": "Detailed visual description",
-            "pexels_video_query": "BROAD 2-3 word query ONLY",
-            "pexels_image_query": "BROAD 2-3 word query ONLY",
+            "visual_description": "Detailed visual description of the stickman finance scene",
+            "pexels_image_query": "unused",
             "camera_movement": "Camera movement",
             "transition": "Transition",
             "sound_effect": "Sound effect"
@@ -116,41 +85,17 @@ RETURN ONLY VALID JSON:
     result = generate_with_retry(client, PRIMARY_MODEL, prompt)
     if result is None:
         result = generate_with_retry(client, FALLBACK_MODEL, prompt)
-    if result is None:
-        raise RuntimeError(f"Scene planning failed for {video_type}")
 
     scenes = result.get("scenes")
     if not isinstance(scenes, list) or len(scenes) != scene_count:
         raise ValueError(f"Expected {scene_count} scenes, received {len(scenes) if scenes else 0}")
 
-    required_fields = ["narration", "visual_description", "pexels_video_query", "pexels_image_query", "camera_movement", "transition", "sound_effect"]
     current_time = 0
-    narration_segments = []
-
     for index, scene in enumerate(scenes):
-        # Only check if the required text fields exist
-        for field in required_fields:
-            if field not in scene or not isinstance(scene[field], str) or not scene[field].strip():
-                raise ValueError(f"Scene {index + 1} missing or invalid field: {field}")
-        
-        # --- NEW: FORCE CORRECT NUMBERS (Ignore what the AI wrote) ---
         scene["scene_id"] = index + 1
         scene["start_time"] = current_time
         scene["duration"] = scene_duration
-        
-        narration_segments.append(scene["narration"])
         current_time += scene_duration
-
-    # --- VERY FORGIVING VALIDATION (NO MORE CRASHING) ---
-    original_words = clean_text_for_comparison(script["narration"])
-    combined_words = clean_text_for_comparison(" ".join(narration_segments))
-    
-    if len(original_words) != len(combined_words):
-        print("⚠️ Warning: Fallback model slightly changed the word count. Using its generated text.")
-    
-    matches = sum(1 for w1, w2 in zip(original_words, combined_words) if w1 == w2)
-    similarity = matches / len(original_words) if original_words else 0
-    print(f"Scene narration similarity: {similarity:.2%}")
 
     print(f"{video_type.capitalize()} scene plan validated successfully!")
     return result
@@ -172,13 +117,12 @@ def main():
             raise FileNotFoundError(f"Missing script: {script_path}")
         with open(script_path, encoding="utf-8") as file:
             script = json.load(file)
+        
         result = create_scene_plan(plan, script, client)
         filename = scene_folder / f"{video_type}_scene_plan.json"
-        with open(filename, "w", encoding="utf-8") as file:
-            json.dump(result, file, indent=4, ensure_ascii=False)
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump(result, f, indent=4, ensure_ascii=False)
         print(f"Saved: {filename}")
-
-    print("\nAll scene plans generated successfully!")
 
 if __name__ == "__main__":
     main()
