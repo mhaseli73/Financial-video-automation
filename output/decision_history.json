@@ -16,5 +16,17 @@
         "country": "United States",
         "topic_angle": "The Ultimate First-Timer's Guide: Best Coastal Resorts, Hidden Beaches, and Authentic Farm-to-Table Cuisine",
         "date": "2026-11-21T09:46:35.836542+00:00"
+    },
+    {
+        "destination": "The Hedonic Treadmill: Why Buying More Never Makes You Happy",
+        "country": "Global",
+        "topic_angle": "Explaining the psychological trap of constantly upgrading your lifestyle and how the dopamine rush of new purchases quickly fades.",
+        "date": "2026-11-22T11:01:28.875589+00:00"
+    },
+    {
+        "destination": "The Minimum Payment Trap: How Credit Card Companies Keep You Hooked",
+        "country": "Global",
+        "topic_angle": "Explaining the mathematics and psychological trick behind minimum payments, showing how a small purchase turns into a decades-long financial burden through the power of compounding interest in reverse.",
+        "date": "2026-11-22T11:35:45.893786+00:00"
     }
 ]
