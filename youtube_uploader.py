@@ -18,7 +18,7 @@ def get_youtube_client():
     creds = Credentials.from_authorized_user_info(creds_info, SCOPES)
     return build("youtube", "v3", credentials=creds)
 
-def upload_video(youtube, file_path, title, description, tags, is_short=False):
+def upload_video(youtube, file_path, title, description, tags, thumbnail_path, is_short=False):
     print(f"Uploading {file_path} to YouTube...")
     
     body = {
@@ -26,10 +26,10 @@ def upload_video(youtube, file_path, title, description, tags, is_short=False):
             "title": title[:100],
             "description": description[:5000],
             "tags": tags,
-            "categoryId": "27" # 27 = Education
+            "categoryId": "27" # Education
         },
         "status": {
-            "privacyStatus": "private", # CHANGED TO PRIVATE FOR REVIEW
+            "privacyStatus": "private",
             "selfDeclaredMadeForKids": False
         }
     }
@@ -49,9 +49,8 @@ def upload_video(youtube, file_path, title, description, tags, is_short=False):
     video_id = response['id']
     print(f"✅ Successfully uploaded! Video ID: {video_id}")
 
-    thumbnail_path = Path("output/thumbnail.jpg")
-    if thumbnail_path.exists():
-        print("Uploading custom thumbnail...")
+    if thumbnail_path and thumbnail_path.exists():
+        print(f"Uploading custom thumbnail: {thumbnail_path.name}...")
         try:
             youtube.thumbnails().set(videoId=video_id, media_body=MediaFileUpload(str(thumbnail_path))).execute()
             print("✅ Thumbnail set successfully!")
@@ -80,8 +79,9 @@ def main():
         long_title = f"{topic} Explained"
         long_desc = f"In this video, we explore {angle}.\n\nDisclaimer: This video is for educational purposes only and does not constitute financial advice.\n\n#explained #finance #psychology"
         long_tags = ["finance", "explained", "psychology", "money", "investing"]
+        long_thumb = output_dir / "long_thumbnail.jpg"
         
-        upload_video(youtube, str(long_video), long_title, long_desc, long_tags, is_short=False)
+        upload_video(youtube, str(long_video), long_title, long_desc, long_tags, long_thumb, is_short=False)
 
     # --- SHORT VIDEO ---
     short_video = output_dir / "short_final_video.mp4"
@@ -89,8 +89,9 @@ def main():
         short_title = f"Don't make this money mistake! 💸"
         short_desc = f"A quick lesson on {topic}. {angle}\n\n#shorts #finance #money"
         short_tags = ["shorts", "finance", "money", "tips"]
+        short_thumb = output_dir / "short_thumbnail.jpg"
         
-        upload_video(youtube, str(short_video), short_title, short_desc, short_tags, is_short=True)
+        upload_video(youtube, str(short_video), short_title, short_desc, short_tags, short_thumb, is_short=True)
 
 if __name__ == "__main__":
     main()
