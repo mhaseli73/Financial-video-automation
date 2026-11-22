@@ -43,7 +43,7 @@ def main():
 
     client = get_client()
     
-    # CRITICAL: Force Long video to be processed FIRST
+    # Force Long video to be processed FIRST so the Short can summarize it
     plans = sorted(plans, key=lambda x: 0 if x["video_type"] == "long" else 1)
     
     long_script_narration = ""
@@ -59,8 +59,8 @@ Here is the full script of the long video:
 "{long_script_narration}"
 
 Write a 60-second script (120-140 words) that acts as a TEASER for this long video.
-1. Start with a shocking hook.
-2. Give 2-3 rapid-fire facts from the long script.
+1. Start with a shocking hook based on the long video.
+2. Give 2-3 rapid-fire logical facts from the long script.
 3. End by saying: "Watch the full video on my channel to learn more!"
 Return ONLY valid JSON:
 {{
@@ -84,11 +84,17 @@ RESEARCH: {research.get('description', '')}
 
 TARGET DURATION: 240 seconds (480 to 520 words)
 
+CRITICAL LOGIC RULES:
+1. DO NOT invent specific stock tips, tax laws, or fake statistics. 
+2. You MUST follow a logical "Problem -> Psychology -> Solution" framework.
+3. Use simple, real-world examples (e.g., coffee, subscriptions, groceries).
+4. The advice must be practical, safe, and universally applicable.
+
 INSTRUCTIONS:
-1. THE HOOK: Start with a highly engaging, relatable problem.
-2. EXPLAINER STYLE: Write like a friendly YouTuber explaining a concept. Use clear, punchy sentences.
-3. Provide practical, actionable advice.
-4. End with a natural audience engagement question.
+1. THE HOOK: Start with a highly engaging, relatable problem about money.
+2. THE PSYCHOLOGY: Explain WHY we make this financial mistake (behavioral finance).
+3. THE SOLUTION: Give 3 actionable, logical steps on how to fix it and save money.
+4. End with a natural audience engagement question (e.g., "What's your biggest money leak? Let me know in the comments!").
 
 Return ONLY valid JSON:
 {{
