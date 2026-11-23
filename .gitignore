@@ -1,0 +1,16 @@
+# Environment variables
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Ignore all generated output EXCEPT the history file and background music
+output/*
+!output/decision_history.json
+!output/bgm*.mp3
+
+# Ignore temporary and secret files
+temp/
+client_secrets.json
+token.json
