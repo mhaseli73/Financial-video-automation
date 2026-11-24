@@ -39,6 +39,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      # Fails in seconds (not after 40 minutes) when the YouTube token is expired or revoked.
+      - name: Check YouTube login
+        run: python -c "import youtube_uploader; youtube_uploader.check_credentials()"
+        env:
+          YT_TOKEN_JSON: ${{ secrets.YT_TOKEN_JSON }}
+
       # No "clean output" step here: pipeline.py cleans old files itself when it starts a NEW run,
       # and keeps the files when it RESUMES after a failed attempt.
       # nick-invision/retry@v2 is old; nick-fields/retry@v3 is the maintained version.
