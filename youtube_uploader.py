@@ -56,15 +56,35 @@ def load_state():
     return {}
 
 
-def get_youtube_client():
+def _load_credentials():
     token_json_str = os.getenv("YT_TOKEN_JSON")
-    if not token_json_str:
-        if Path("token.json").exists():
-            return build("youtube", "v3",
-                         credentials=Credentials.from_authorized_user_file("token.json", SCOPES))
-        raise RuntimeError("YT_TOKEN_JSON environment variable is missing.")
-    creds = Credentials.from_authorized_user_info(json.loads(token_json_str), SCOPES)
-    return build("youtube", "v3", credentials=creds)
+    if token_json_str:
+        return Credentials.from_authorized_user_info(json.loads(token_json_str), SCOPES)
+    if Path("token.json").exists():
+        return Credentials.from_authorized_user_file("token.json", SCOPES)
+    raise RuntimeError("YT_TOKEN_JSON environment variable is missing.")
+
+
+def get_youtube_client():
+    return build("youtube", "v3", credentials=_load_credentials())
+
+
+def check_credentials():
+    """Quick login test. The workflow runs this FIRST, so an expired token is found in
+    seconds and not after 40 minutes of rendering."""
+    from google.auth.exceptions import RefreshError
+    from google.auth.transport.requests import Request
+
+    creds = _load_credentials()
+    try:
+        creds.refresh(Request())
+    except RefreshError as error:
+        raise SystemExit(
+            f"\nYOUTUBE LOGIN FAILED: {error}\n"
+            "The YouTube token is expired or revoked. Make a new one with get_youtube_token.py "
+            "and update the GitHub secret YT_TOKEN_JSON. To stop this from happening every 7 days, "
+            "set the OAuth app to 'In production' in Google Cloud Console.")
+    print("YouTube login OK")
 
 
 def upload_video(youtube, file_path, title, description, tags, thumbnail_path, is_short=False):
