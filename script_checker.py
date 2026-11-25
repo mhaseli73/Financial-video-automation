@@ -104,7 +104,7 @@ def ai_review(script, plan, research_text, style, video_type, long_narration="")
         source = f"\nLONG VIDEO SCRIPT (the Short may only use facts from this):\n{long_narration}\n"
 
     prompt = f"""
-You are a strict editor and fact-checker for a YouTube finance education channel (stickman style).
+You are a strict editor and fact-checker for a YouTube finance education channel (cartoon style).
 Check the script below. You are NOT a writer: do not rewrite it, only find real problems.
 
 TOPIC: {plan['destination']}
@@ -161,7 +161,7 @@ def revise(script, issues, style, video_type):
                    if video_type == "short" else "The script must still end with a question for the audience.")
 
     prompt = f"""
-You are editing a voice-over script for a stickman finance YouTube video.
+You are editing a voice-over script for an animated cartoon finance YouTube video.
 Rewrite the narration so that ALL problems below are fixed. Keep everything that is not a problem.
 
 PROBLEMS:
