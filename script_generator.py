@@ -39,7 +39,7 @@ def make_validator(video_type, style):
 
 def build_long_prompt(plan, research, style):
     return f"""
-You are a professional YouTube scriptwriter creating a Stickman animated finance explainer.
+You are a professional YouTube scriptwriter creating an animated cartoon finance explainer.
 
 TOPIC: {plan['destination']}
 MAIN THEME: {plan.get('theme', '')}
