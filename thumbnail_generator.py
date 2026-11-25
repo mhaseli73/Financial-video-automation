@@ -29,7 +29,7 @@ def generate_thumbnail(topic_name, image_path, output_path, is_vertical=False, c
         start_size=130 if not is_vertical else 110, max_lines=4,
     )
 
-    # dark band behind the text, so it is readable on a white stickman picture
+    # dark band behind the text, so it is readable on a bright picture
     block_h = line_h * len(lines)
     cy = size[1] // 2
     overlay = Image.new("RGBA", size, (0, 0, 0, 0))
