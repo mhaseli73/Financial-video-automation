@@ -44,7 +44,7 @@ def build_title_clip(text, is_vertical, color=(255, 235, 0), y_frac=0.5):
     font, lines, line_h = fit_text_block(draw, text.upper(), int(w * 0.85), int(h * 0.5),
                                          start_size=110 if not is_vertical else 96, max_lines=4)
     top, bottom = draw_centered_lines(draw, lines, font, w / 2, h * y_frac, line_h,
-                                      fill=(*color, 255), stroke_width=8,  # bright color: white is invisible on the white stickman images
+                                      fill=(*color, 255), stroke_width=8,  # bright color: white is invisible on light pictures
                                       stroke_fill=(0, 0, 0, 255))
     clip = ImageClip(np.array(img)).set_duration(TITLE_SECONDS)
     return clip.crossfadein(0.5).crossfadeout(1)
