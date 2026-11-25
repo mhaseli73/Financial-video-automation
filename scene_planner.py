@@ -5,6 +5,7 @@ from pathlib import Path
 
 from common import load_json, save_json
 from gemini_client import generate_json
+from styles import visual
 
 SCENES_BY_TYPE = {"short": 8, "long": 24}
 WORDS_PER_SECOND = 2.5  # only used for the estimate; the renderer uses the real audio length
@@ -40,7 +41,7 @@ def get_visuals(plan, script, parts):
     """Ask Gemini ONLY for the picture idea of each scene."""
     numbered = "\n".join(f"{i + 1}. {text}" for i, text in enumerate(parts))
     prompt = f"""
-You are an expert director for a Stickman Finance YouTube channel.
+You are an expert director for an animated Finance YouTube channel.
 For each numbered narration part below, write ONE visual description for an AI image generator.
 
 TOPIC: {plan['destination']}
@@ -52,9 +53,8 @@ NARRATION PARTS:
 
 RULES:
 1. Return exactly {len(parts)} descriptions, in the same order.
-2. Style: simple STICKMAN cartoon about FINANCE (stickmen with money, credit cards, charts,
-   piggy banks, graphs, wallets; stressed or happy about money). No travel, beaches or tourists.
-3. Use the same main stickman character in every scene.
+2. Style: {visual()['scene_rules']}. No travel, beaches or tourists.
+3. Use the same main character in every scene: {visual()['character']}.
 4. One clear idea per scene: say who is there, what they do, which objects, and the emotion.
 5. Do NOT ask for readable words, letters or numbers in the picture (image AI writes them badly).
    Use symbols like $, %, arrows and charts instead.
@@ -75,8 +75,8 @@ Return ONLY valid JSON:
                                               validate=validate)["visuals"]]
     except RuntimeError:
         # Do not stop the whole pipeline because of pictures: use simple generic scenes.
-        print("  Could not get visuals from Gemini. Using generic stickman scenes.", flush=True)
-        return [f"A stickman thinking about money, with a coin and a chart. Scene about: {t[:120]}"
+        print("  Could not get visuals from Gemini. Using generic scenes.", flush=True)
+        return [f"{visual()['fallback']}{t[:120]}"
                 for t in parts]
 
 
