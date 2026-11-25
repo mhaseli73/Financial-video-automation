@@ -2,6 +2,7 @@
 A style changes: script structure, length, opening type, picture colors, title color/position,
 zoom amount and background music. The style is saved in the history, and the last 3 styles
 are not used again."""
+import os
 import random
 
 STYLES = {
@@ -26,7 +27,7 @@ STYLES = {
     },
     "story": {
         "structure": (
-            "Tell it as ONE short story about a stickman character (give him a simple first name). "
+            "Tell it as ONE short story about a cartoon character (give him a simple first name). "
             "Follow him through a money situation in 3 stages: the mistake, the moment he notices, "
             "the change he makes. Explain the idea through what happens to him. Finish with the "
             "lesson in two sentences and a question for the audience."),
@@ -74,3 +75,39 @@ def pick_style(history):
 
 def get_style(style_id):
     return STYLES.get(style_id) or STYLES["problem_solution"]
+
+
+# ---------------------------------------------------------------------------------------------
+# PICTURE STYLE. Default is "cartoon". Set the env var IMAGE_STYLE=stickman to go back to the old look.
+# ---------------------------------------------------------------------------------------------
+VISUALS = {
+    "cartoon": {
+        "name": "cartoon",
+        "character": ("a friendly original cartoon character: a young man with short brown hair, "
+                      "a blue shirt and a big smile"),
+        "prefix": ("Colorful flat vector cartoon illustration, friendly characters with big expressive "
+                   "faces, clean bold outlines, bright cheerful colors with {accent} as the main accent color, "
+                   "simple clean background, original characters (not similar to any existing cartoon or brand), "
+                   "no text, no letters, no logos, showing: "),
+        "scene_rules": ("colorful CARTOON illustration about FINANCE (friendly cartoon characters with money, "
+                        "credit cards, charts, piggy banks, wallets; stressed or happy about money)"),
+        "fallback": "A friendly cartoon character thinking about money, with a coin and a chart. Scene about: ",
+    },
+    "stickman": {
+        "name": "stickman",
+        "character": "a simple stickman",
+        "prefix": ("Stickman drawing, thick black marker, white background, minimalist cartoon, "
+                   "with {accent} marker accents, no text, no letters, of: "),
+        "scene_rules": ("simple STICKMAN cartoon about FINANCE (stickmen with money, credit cards, charts, "
+                        "piggy banks, graphs, wallets; stressed or happy about money)"),
+        "fallback": "A stickman thinking about money, with a coin and a chart. Scene about: ",
+    },
+}
+
+
+def visual():
+    return VISUALS.get(os.getenv("IMAGE_STYLE", "cartoon").lower(), VISUALS["cartoon"])
+
+
+def image_prefix(accent):
+    return visual()["prefix"].format(accent=accent)
