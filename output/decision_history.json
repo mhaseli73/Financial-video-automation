@@ -28,5 +28,13 @@
         "country": "Global",
         "topic_angle": "Explaining the mathematics and psychological trick behind minimum payments, showing how a small purchase turns into a decades-long financial burden through the power of compounding interest in reverse.",
         "date": "2026-11-22T11:35:45.893786+00:00"
+    },
+    {
+        "destination": "The Decoy Effect: How Stores Trick Your Brain Into Spending More",
+        "country": "Global",
+        "theme": "Behavioral Finance",
+        "style": "story",
+        "topic_angle": "Explaining how companies use a fake third option to manipulate consumers into buying the most expensive item, illustrated through a cartoon movie theater popcorn example.",
+        "date": "2026-11-25T11:09:43.300300+00:00"
     }
 ]
