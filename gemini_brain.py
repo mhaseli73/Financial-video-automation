@@ -92,7 +92,7 @@ def choose_destination():
                     + json.dumps(rejected, ensure_ascii=False)
 
         prompt = f"""
-You are the AI director of a successful YouTube channel called "Money Explained". We use Stickman animations to explain finance.
+You are the AI director of a successful YouTube channel called "Money Explained". We use colorful cartoon animations to explain finance.
 
 Target audience: United States, United Kingdom, Europe and Australia.
 
@@ -102,7 +102,7 @@ CRITICAL RULES:
 1. ROTATE CATEGORIES. Allowed themes: {json.dumps(THEMES)}.
    The most recent themes were (oldest first): {json.dumps(recent_themes)}. Do NOT use any of them again.
 2. DO NOT give specific stock picks, personal financial advice, or legal or tax advice. Focus on EDUCATION and human behavior.
-3. VISUAL POTENTIAL: the topic must be easy to draw with stickmen (graphs, coins, wallets, brains).
+3. VISUAL POTENTIAL: the topic must be easy to show with simple cartoon characters and objects (graphs, coins, wallets, brains).
 4. The topic must not be similar to these past topics:
 {json.dumps(avoid_titles, ensure_ascii=False)}
 {extra}
@@ -116,9 +116,9 @@ Return ONLY valid JSON:
   "audience_reason": "Why viewers will click on this",
   "research_query": "2-4 words to look up on Wikipedia, e.g. 'Hedonic treadmill'",
   "visual_ideas": [
-    "Stickman looking at a glowing shopping cart",
-    "Stickman brain lighting up with a dollar sign",
-    "Stickman breaking free from chains of debt"
+    "Cartoon man looking at a glowing shopping cart",
+    "Cartoon brain lighting up with a dollar sign",
+    "Cartoon woman breaking free from chains of debt"
   ]
 }}
 """
