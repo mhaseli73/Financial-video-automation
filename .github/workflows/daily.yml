@@ -58,6 +58,7 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           YT_TOKEN_JSON: ${{ secrets.YT_TOKEN_JSON }}
+          POLLINATIONS_API_KEY: ${{ secrets.POLLINATIONS_API_KEY }}  # removes the logo from images
           # YT_PRIVACY_STATUS: public   # uncomment (private | unlisted | public). Default is private.
 
       - name: Save AI decision history
