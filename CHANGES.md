@@ -58,3 +58,15 @@ Every script Gemini writes is checked before images, voice or upload are made.
    the workflow retries with a NEW script, and nothing is uploaded.
 The report is saved in `output/scripts/long_check.json` and `short_check.json` (also in the workflow artifact).
 Set `SCRIPT_CHECK_STRICT=0` to only warn and continue. An AI checker can still miss mistakes, so read some scripts yourself.
+
+## New: cartoon pictures instead of stickmen
+The picture style is now a colorful cartoon with one friendly, original main character in every scene.
+It is set in one place (`styles.py`, `VISUALS`). Set the env var `IMAGE_STYLE=stickman` to go back to the old look.
+Changed files: styles.py, visual_fetcher.py, scene_planner.py, gemini_brain.py, script_generator.py, script_checker.py.
+
+## New: no logo in the pictures (`POLLINATIONS_API_KEY`)
+The anonymous Pollinations image endpoint always puts its logo in the picture (`nologo=true` is ignored there).
+Get a free key at https://enter.pollinations.ai and save it as the GitHub secret `POLLINATIONS_API_KEY`.
+The key is sent in a header (never in the URL). With a key the wait between images is 5 s instead of 45 s.
+If the key has no budget left, the code falls back to the anonymous endpoint (logo may appear); set
+`ALLOW_LOGO_FALLBACK=0` to use a placeholder picture instead. Changed files: visual_fetcher.py, daily.yml.
